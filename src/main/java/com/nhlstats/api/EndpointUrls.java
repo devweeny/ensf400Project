@@ -1,4 +1,4 @@
-package src.main.java.com.nhlstats.api;
+package com.nhlstats.api;
 
 public class EndpointUrls {
     

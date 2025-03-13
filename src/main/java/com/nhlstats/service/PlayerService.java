@@ -1,4 +1,4 @@
-package src.main.java.com.nhlstats.service;
+package com.nhlstats.service;
 
 public class PlayerService {
     

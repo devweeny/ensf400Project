@@ -1,4 +1,4 @@
-package src.main.java.com.nhlstats.ui;
+package com.nhlstats.ui;
 
 public class ComparisonPanel {
     

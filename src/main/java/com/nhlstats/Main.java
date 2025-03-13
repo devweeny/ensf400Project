@@ -1,4 +1,4 @@
-package src.main.java.com;
+package com.nhlstats;
 
 public class Main {
     

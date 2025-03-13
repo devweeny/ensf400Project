@@ -1,4 +1,4 @@
-package src.main.java.com.nhlstats.model;
+package com.nhlstats.model;
 
 public class ComparisonResult {
     
