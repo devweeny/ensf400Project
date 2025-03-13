@@ -1,4 +1,4 @@
-package src.test.java.com.nhlstats.api;
+package com.nhlstats.api;
 
 public class NhlApiClientTest {
     

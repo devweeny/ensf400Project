@@ -1,4 +1,4 @@
-package src.test.java.com.nhlstats.service;
+package com.nhlstats.service;
 
 public class StatsComparisonServiceTest {
     

@@ -25,6 +25,9 @@ public class Player {
         this.id = id;
         this.fullName = fullName;
         this.gameLogs = new ArrayList<>();
+        this.teamName = "";
+        this.position = "";
+        this.imageUrl = "";
     }
 
     /**
@@ -94,6 +97,8 @@ public class Player {
     public void setSeasonStats(PlayerStats seasonStats) {
         this.seasonStats = seasonStats;
     }
+
+    
 
     /**
      * Calculates aggregate statistics based on the player's game logs.

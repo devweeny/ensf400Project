@@ -12,6 +12,11 @@ public class EndpointUrls {
     public static final String API_BASE_URL = "https://api-web.nhle.com/v1/";
     
     /**
+     * Alternative stats API base URL
+     */
+    public static final String STATS_API_BASE_URL = "https://statsapi.web.nhl.com/api/v1/";
+    
+    /**
      * URL template for fetching player information.
      * Requires player ID to be inserted.
      */
@@ -77,5 +82,17 @@ public class EndpointUrls {
     public static String buildUrl(String endpoint, Object... params) {
         String formattedEndpoint = String.format(endpoint, params);
         return API_BASE_URL + formattedEndpoint;
+    }
+    
+    /**
+     * Builds a full URL for the stats API endpoint
+     * 
+     * @param endpoint the endpoint path or template
+     * @param params parameters to be inserted into the endpoint template
+     * @return the complete URL
+     */
+    public static String buildStatsUrl(String endpoint, Object... params) {
+        String formattedEndpoint = String.format(endpoint, params);
+        return STATS_API_BASE_URL + formattedEndpoint;
     }
 }

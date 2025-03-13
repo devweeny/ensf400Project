@@ -4,8 +4,10 @@ import javax.swing.*;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
@@ -135,7 +137,7 @@ public class ComparisonPanel extends JPanel {
      * @param player the player
      * @return a panel containing player information
      */
-    private JPanel createPlayerCard(Player player) {
+        private JPanel createPlayerCard(Player player) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.GRAY),
@@ -145,9 +147,19 @@ public class ComparisonPanel extends JPanel {
         // Header with player name, team, and position
         JPanel headerPanel = new JPanel(new BorderLayout());
         
+        // Player info section
         JPanel playerInfoPanel = new JPanel(new GridLayout(3, 1));
+        
+        // Name label - create only one instance
         JLabel nameLabel = new JLabel(player.getFullName());
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD, 16f));
+        
+        // Debug output to see if the name is actually available
+        System.out.println("Creating card for player: ID=" + player.getId() + 
+                          ", Name='" + player.getFullName() + "'" +
+                          ", Team='" + player.getTeamName() + "'" +
+                          ", Position='" + player.getPosition() + "'" +
+                          ", Image URL='" + player.getImageUrl() + "'");
         
         JLabel teamLabel = new JLabel("Team: " + player.getTeamName());
         JLabel positionLabel = new JLabel("Position: " + player.getPosition());
@@ -155,16 +167,60 @@ public class ComparisonPanel extends JPanel {
         playerInfoPanel.add(nameLabel);
         playerInfoPanel.add(teamLabel);
         playerInfoPanel.add(positionLabel);
-        
+                
         // Player image
         JLabel imageLabel = new JLabel();
-        try {
-            URL imageUrl = new URL(player.getImageUrl());
-            Image image = ImageIO.read(imageUrl);
-            image = image.getScaledInstance(100, 100, Image.SCALE_SMOOTH);
-            imageLabel.setIcon(new ImageIcon(image));
-        } catch (IOException e) {
-            imageLabel.setText("No Image");
+        imageLabel.setPreferredSize(new Dimension(100, 100));
+
+        if (player.getImageUrl() != null && !player.getImageUrl().isEmpty()) {
+            try {
+                // Try our primary image source
+                URL imageUrl = new URL(player.getImageUrl());
+                System.out.println("Loading image from: " + imageUrl);
+                
+                // Set a timeout for URL connection
+                URLConnection connection = imageUrl.openConnection();
+                connection.setConnectTimeout(3000);
+                connection.setReadTimeout(5000);
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+                
+                Image image = ImageIO.read(connection.getInputStream());
+                
+                if (image != null) {
+                    image = image.getScaledInstance(100, 100, Image.SCALE_SMOOTH);
+                    imageLabel.setIcon(new ImageIcon(image));
+                } else {
+                    System.out.println("Image is null for player: " + player.getFullName());
+                    createPlaceholderImage(imageLabel, player);
+                }
+            } catch (Exception e) {
+                System.out.println("Failed to load primary image for " + player.getFullName() + ": " + e.getMessage());
+                
+                // Try alternate URL if primary fails
+                try {
+                    String altImageUrl = String.format("https://assets.nhle.com/mugs/nhl/latest/%s.png", player.getId());
+                    URL url = new URL(altImageUrl);
+                    
+                    URLConnection connection = url.openConnection();
+                    connection.setConnectTimeout(3000);
+                    connection.setReadTimeout(5000);
+                    connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+                    
+                    Image image = ImageIO.read(connection.getInputStream());
+                    if (image != null) {
+                        image = image.getScaledInstance(100, 100, Image.SCALE_SMOOTH);
+                        imageLabel.setIcon(new ImageIcon(image));
+                    } else {
+                        createPlaceholderImage(imageLabel, player);
+                    }
+                } catch (Exception e2) {
+                    System.out.println("Failed to load alternate image: " + e2.getMessage());
+                    createPlaceholderImage(imageLabel, player);
+                }
+            }
+        } else {
+            System.out.println("No image URL for player: " + player.getFullName());
+            createPlaceholderImage(imageLabel, player);
         }
         
         headerPanel.add(playerInfoPanel, BorderLayout.CENTER);
@@ -212,6 +268,49 @@ public class ComparisonPanel extends JPanel {
         card.add(buttonPanel, BorderLayout.SOUTH);
         
         return card;
+    }
+
+    private void createPlaceholderImage(JLabel label, Player player) {
+        // Create a colored placeholder with player's initials
+        int width = 100;
+        int height = 100;
+        
+        BufferedImage placeholder = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = placeholder.createGraphics();
+        
+        // Use player's team colors if available, otherwise use a default color
+        g2d.setColor(new Color(30, 144, 255)); // Default blue
+        g2d.fillRect(0, 0, width, height);
+        
+        // Add initials
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("Arial", Font.BOLD, 36));
+        
+        String initials = getInitials(player.getFullName());
+        FontMetrics fm = g2d.getFontMetrics();
+        int textWidth = fm.stringWidth(initials);
+        int textHeight = fm.getHeight();
+        
+        g2d.drawString(initials, (width - textWidth) / 2, height / 2 + textHeight / 4);
+        
+        g2d.dispose();
+        
+        label.setIcon(new ImageIcon(placeholder));
+    }
+    
+    private String getInitials(String name) {
+        if (name == null || name.isEmpty()) return "?";
+        
+        StringBuilder initials = new StringBuilder();
+        String[] parts = name.split(" ");
+        
+        for (String part : parts) {
+            if (!part.isEmpty()) {
+                initials.append(part.charAt(0));
+            }
+        }
+        
+        return initials.toString().toUpperCase();
     }
     
     /**
