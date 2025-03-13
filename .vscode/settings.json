@@ -8,5 +8,5 @@
     "editor.detectIndentation": false,
     "editor.tabSize": 4
   },
-  "java.configuration.updateBuildConfiguration": "interactive"
+  "java.configuration.updateBuildConfiguration": "automatic"
 }
