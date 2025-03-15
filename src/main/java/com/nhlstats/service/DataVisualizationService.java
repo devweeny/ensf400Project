@@ -9,7 +9,7 @@ public class DataVisualizationService {
     public Map<String, Integer> prepareBarChartData(List<PlayerStats> players, String statName) {
         Map<String, Integer> chartData = new HashMap<>();
         for (PlayerStats ps : players) {
-            chartData.put(ps.getPlayerName(), ps.getStatByName(statName));
+            // chartData.put(ps.getPlayerName(), ps.getStatByName(statName));
         }
         return chartData;
     }
@@ -18,7 +18,7 @@ public class DataVisualizationService {
     public Map<String, Map<String, Integer>> prepareRadarChartData(List<PlayerStats> players) {
         Map<String, Map<String, Integer>> radarData = new HashMap<>();
         for (PlayerStats ps : players) {
-            radarData.put(ps.getPlayerName(), ps.getAllStats());
+            // radarData.put(ps.getPlayerName(), ps.getAllStats());
         }
         return radarData;
     }
