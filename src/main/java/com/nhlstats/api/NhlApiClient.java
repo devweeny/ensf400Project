@@ -43,6 +43,7 @@ public class NhlApiClient {
      */
     public JsonNode getPlayerInfo(String playerId) throws IOException, InterruptedException {
         String url = EndpointUrls.buildUrl(EndpointUrls.PLAYER_INFO, playerId);
+        System.out.println(url);
         return fetchJsonData(url);
     }
     

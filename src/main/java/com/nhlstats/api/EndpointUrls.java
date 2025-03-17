@@ -20,7 +20,7 @@ public class EndpointUrls {
      * URL template for fetching player information.
      * Requires player ID to be inserted.
      */
-    public static final String PLAYER_INFO = "player/%s";
+    public static final String PLAYER_INFO = "player/%s/landing";
     
     /**
      * URL template for fetching a player's game log for a specific season and game type.

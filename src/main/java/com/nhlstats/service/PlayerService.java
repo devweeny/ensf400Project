@@ -16,9 +16,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Service;
+
 /**
  * Service for fetching and processing player data from the NHL API.
  */
+@Service
 public class PlayerService {
     private final NhlApiClient apiClient;
     private final DateTimeFormatter dateFormatter;
@@ -175,100 +178,39 @@ public class PlayerService {
      * @return a Player object
      */
     private Player createPlayerFromInfo(String playerId, JsonNode playerInfo) {
-        // Check if we received an error response or empty data
-        if (apiClient.isErrorResponse(playerInfo) || playerInfo.isEmpty()) {
-            // Try to search for the player ID in the NHL public database
-            System.out.println("Creating basic player with ID: " + playerId);
-            
-            // Create a basic player with just the ID
-            String playerName = getPlayerNameFromStaticMapping(playerId);
-            if (playerName == null) {
-                playerName = "Player " + playerId;
-            }
-            
-            Player player = new Player(playerId, playerName);
-            
-            // Set defaults 
-            String teamName = "NHL";
-            String position = "Unknown";
-            
-            player.setTeamName(teamName);
-            player.setPosition(position);
-            
-            // Set image URL
-            player.setImageUrl(buildPlayerImageUrl(playerId));
-            
-            System.out.println("Created player: " + player.getFullName() + ", Team: " + player.getTeamName() + 
-                           ", Position: " + player.getPosition() + ", Image URL: " + player.getImageUrl());
-            
-            return player;
-        }
         
         // First, try to get name from different possible locations in the JSON
-        String fullName = null;
-        
-        // New API structure - check the fullName field directly
-        if (playerInfo.has("fullName")) {
-            fullName = playerInfo.get("fullName").asText();
-        } 
-        // Try firstname/lastname combo
-        else if (playerInfo.has("firstName") && playerInfo.has("lastName")) {
-            fullName = playerInfo.get("firstName").asText() + " " + playerInfo.get("lastName").asText();
-        }
-        // Check if name is in a nested property (person.fullName in older API)
-        else if (playerInfo.has("person") && playerInfo.path("person").has("fullName")) {
-            fullName = playerInfo.path("person").get("fullName").asText();
-        }
-        // Try old API structure with just "name"
-        else if (playerInfo.has("name")) {
-            fullName = playerInfo.get("name").asText();
-        }
-        // If all else fails, use the player ID or lookup
-        else {
-            fullName = getPlayerNameFromStaticMapping(playerId);
-            if (fullName == null) {
-                fullName = "Player " + playerId;
-            }
-        }
+        String fullName = playerInfo.get("firstName").get("default").asText() + " " + 
+                         playerInfo.get("lastName").get("default").asText();
         
         // Get team name - check multiple possible paths
-        String teamName = "";
-        if (playerInfo.has("currentTeam") && playerInfo.path("currentTeam").has("name")) {
-            teamName = playerInfo.path("currentTeam").get("name").asText();
-        } 
-        else if (playerInfo.has("currentTeam") && playerInfo.path("currentTeam").has("default")) {
-            teamName = playerInfo.path("currentTeam").path("name").path("default").asText();
-        }
-        else if (playerInfo.has("teamName")) {
-            teamName = playerInfo.get("teamName").asText();
-        }
-        else if (playerInfo.has("team") && playerInfo.path("team").has("name")) {
-            teamName = playerInfo.path("team").get("name").asText();
-        }
+        String teamName = playerInfo.get("fullTeamName").get("default").asText();
         
         // Get position
-        String position = "";
-        if (playerInfo.has("position")) {
-            // Try different possible structures
-            if (playerInfo.path("position").isTextual()) {
-                position = playerInfo.path("position").asText();
-            } 
-            else if (playerInfo.path("position").has("name")) {
-                position = playerInfo.path("position").get("name").asText();
-            }
-            else if (playerInfo.path("position").has("code")) {
-                position = playerInfo.path("position").get("code").asText();
-            }
-        }
-        // Try another path
-        else if (playerInfo.has("primaryPosition") && playerInfo.path("primaryPosition").has("name")) {
-            position = playerInfo.path("primaryPosition").get("name").asText();
-        }
-        
+        String position = playerInfo.get("position").asText();
+
+        JsonNode stats = playerInfo.get("careerTotals").get("regularSeason");
+        PlayerStats playerStats = new PlayerStats();
+        playerStats.setGamesPlayed(stats.get("gamesPlayed").asInt());
+        playerStats.setAssists(stats.get("assists").asInt());
+        playerStats.setGoals(stats.get("goals").asInt());
+        playerStats.setPoints(stats.get("points").asInt());
+        playerStats.setPlusMinus(stats.get("plusMinus").asInt());
+        playerStats.setPowerPlayGoals(stats.get("powerPlayGoals").asInt());
+        playerStats.setPowerPlayPoints(stats.get("powerPlayPoints").asInt());
+        playerStats.setShots(stats.get("shots").asInt());
+        playerStats.setPointsPerGame((double) stats.get("points").asInt() / stats.get("gamesPlayed").asInt());
+        playerStats.setGoalsPerGame((double) stats.get("goals").asInt() / stats.get("gamesPlayed").asInt());
+        playerStats.setAssistsPerGame((double) stats.get("assists").asInt() / stats.get("gamesPlayed").asInt());
+        playerStats.setShotPercentage((double) stats.get("goals").asInt() / stats.get("shots").asInt());
+        playerStats.setAverageTimeOnIce(stats.get("avgToi").asText());
+
+
         // Create the player with the info we found
         Player player = new Player(playerId, fullName);
         player.setTeamName(teamName);
         player.setPosition(position);
+        player.setSeasonStats(playerStats);
         
         // Try different image URL formats since the NHL API changes periodically
         String imageUrl = buildPlayerImageUrl(playerId);

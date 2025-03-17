@@ -151,6 +151,14 @@ public class PlayerStats {
         this.averageTimeOnIce = averageTimeOnIce;
     }
     
+    public void setAverageTimeOnIce(String averageTimeOnIce) {
+        // "20:30" -> 20.5
+        String[] parts = averageTimeOnIce.split(":");
+        int minutes = Integer.parseInt(parts[0]);
+        int seconds = Integer.parseInt(parts[1]);
+        this.averageTimeOnIce = minutes + seconds / 60.0;
+    }
+    
     @Override
     public String toString() {
         return String.format(

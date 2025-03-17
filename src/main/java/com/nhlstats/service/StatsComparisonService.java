@@ -12,9 +12,12 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Service;
+
 /**
  * Service for comparing statistics between NHL players.
  */
+@Service
 public class StatsComparisonService {
     
     /**
@@ -336,7 +339,7 @@ public class StatsComparisonService {
                 differences.put("pointsPerGame", stats1.getPointsPerGame() - stats2.getPointsPerGame());
                 differences.put("shotPercentage", stats1.getShotPercentage() - stats2.getShotPercentage());
                 
-                String key = player1.getId() + "-" + player2.getId();
+                String key = player1.getFullName() + "-" + player2.getFullName();
                 allDifferences.put(key, differences);
             }
         }

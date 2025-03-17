@@ -11,9 +11,12 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Service;
+
 /**
  * Service for preparing player statistics for visualization.
  */
+@Service
 public class DataVisualizationService {
 
     /**
