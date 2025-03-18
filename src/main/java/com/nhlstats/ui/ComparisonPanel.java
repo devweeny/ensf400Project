@@ -12,6 +12,7 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
 import java.util.function.ToIntFunction;
+import javax.swing.table.DefaultTableCellRenderer;
 
 import com.nhlstats.model.Player;
 import com.nhlstats.model.PlayerStats;
@@ -132,28 +133,30 @@ public class ComparisonPanel extends JPanel {
         repaint();
     }
     
-    /**
+        /**
      * Creates a card displaying player information.
      * 
      * @param player the player
      * @return a panel containing player information
      */
     private JPanel createPlayerCard(Player player) {
-        JPanel card = new JPanel(new BorderLayout());
+        JPanel card = new JPanel(new BorderLayout(10, 5));
         card.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.GRAY),
             BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
         
         // Header with player name, team, and position
-        JPanel headerPanel = new JPanel(new BorderLayout());
+        JPanel headerPanel = new JPanel(new BorderLayout(10, 0));
         
         // Player info section
-        JPanel playerInfoPanel = new JPanel(new GridLayout(3, 1));
+        JPanel playerInfoPanel = new JPanel();
+        playerInfoPanel.setLayout(new BoxLayout(playerInfoPanel, BoxLayout.Y_AXIS));
         
-        // Name label - create only one instance
+        // Name label
         JLabel nameLabel = new JLabel(player.getFullName());
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD, 16f));
+        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         // Debug output to see if the name is actually available
         System.out.println("Creating card for player: ID=" + player.getId() + 
@@ -163,16 +166,21 @@ public class ComparisonPanel extends JPanel {
                           ", Image URL='" + player.getImageUrl() + "'");
         
         JLabel teamLabel = new JLabel("Team: " + player.getTeamName());
+        teamLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
         JLabel positionLabel = new JLabel("Position: " + player.getPosition());
+        positionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         
         playerInfoPanel.add(nameLabel);
+        playerInfoPanel.add(Box.createVerticalStrut(5));
         playerInfoPanel.add(teamLabel);
+        playerInfoPanel.add(Box.createVerticalStrut(2));
         playerInfoPanel.add(positionLabel);
-                
+        
         // Player image
         JLabel imageLabel = new JLabel();
         imageLabel.setPreferredSize(new Dimension(100, 100));
-
+    
         if (player.getImageUrl() != null && !player.getImageUrl().isEmpty()) {
             try {
                 // Try our primary image source
@@ -227,9 +235,9 @@ public class ComparisonPanel extends JPanel {
         headerPanel.add(playerInfoPanel, BorderLayout.CENTER);
         headerPanel.add(imageLabel, BorderLayout.EAST);
         
-        // Stats table
-        JPanel statsPanel = new JPanel(new BorderLayout());
-        statsPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        // Stats table - use a more compact table
+        JPanel statsPanel = new JPanel(new BorderLayout(0, 0));
+        statsPanel.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
         
         String[] columnNames = {"Statistic", "Value"};
         
@@ -238,13 +246,13 @@ public class ComparisonPanel extends JPanel {
         if (player.getSeasonStats() != null) {
             PlayerStats stats = player.getSeasonStats();
             data = new Object[][]{
-                {"Games Played", stats.getGamesPlayed()},
+                {"Games", stats.getGamesPlayed()},
                 {"Goals", stats.getGoals()},
                 {"Assists", stats.getAssists()},
                 {"Points", stats.getPoints()},
                 {"Plus/Minus", stats.getPlusMinus()},
-                {"Points Per Game", decimalFormat.format(stats.getPointsPerGame())},
-                {"Shot Percentage", decimalFormat.format(stats.getShotPercentage()) + "%"}
+                {"PPG", decimalFormat.format(stats.getPointsPerGame())},
+                {"Shot %", decimalFormat.format(stats.getShotPercentage()) + "%"}
             };
         } else {
             data = new Object[][]{{"No Data Available", ""}};
@@ -252,9 +260,27 @@ public class ComparisonPanel extends JPanel {
         
         JTable statsTable = new JTable(data, columnNames);
         statsTable.setEnabled(false);
+        statsTable.setRowHeight(20); // Reduced row height for compactness
+        statsTable.setIntercellSpacing(new Dimension(5, 0)); // Reduced cell spacing
+        
+        // Set column widths and center alignment for the "Value" column
+        statsTable.getColumnModel().getColumn(0).setPreferredWidth(80);
+        statsTable.getColumnModel().getColumn(1).setPreferredWidth(60);
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        statsTable.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
+        
+        // Remove table header to save space
+        statsTable.setTableHeader(null);
+        
+        JScrollPane tableScrollPane = new JScrollPane(statsTable);
+        tableScrollPane.setBorder(BorderFactory.createEmptyBorder());
+        tableScrollPane.setPreferredSize(new Dimension(150, 140)); // Fixed height
+        
+        statsPanel.add(tableScrollPane, BorderLayout.CENTER);
         
         // Remove button
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         JButton removeButton = new JButton("Remove");
         removeButton.addActionListener(e -> {
             players.remove(player);
@@ -262,8 +288,7 @@ public class ComparisonPanel extends JPanel {
         });
         buttonPanel.add(removeButton);
         
-        statsPanel.add(new JScrollPane(statsTable), BorderLayout.CENTER);
-        
+        // Assemble card
         card.add(headerPanel, BorderLayout.NORTH);
         card.add(statsPanel, BorderLayout.CENTER);
         card.add(buttonPanel, BorderLayout.SOUTH);
