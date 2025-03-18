@@ -11,6 +11,7 @@ import java.net.URLConnection;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.List;
+import java.util.function.ToIntFunction;
 
 import com.nhlstats.model.Player;
 import com.nhlstats.model.PlayerStats;
@@ -137,7 +138,7 @@ public class ComparisonPanel extends JPanel {
      * @param player the player
      * @return a panel containing player information
      */
-        private JPanel createPlayerCard(Player player) {
+    private JPanel createPlayerCard(Player player) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(Color.GRAY),
@@ -408,35 +409,189 @@ public class ComparisonPanel extends JPanel {
             return;
         }
         
-        // In a real implementation, this would create charts using a charting library
-        // For now, let's just show a placeholder
+        // Main panel with chart and controls
         JPanel contentPanel = new JPanel(new BorderLayout());
         
-        JLabel placeholderLabel = new JLabel("Chart visualization would be displayed here");
-        placeholderLabel.setHorizontalAlignment(JLabel.CENTER);
-        placeholderLabel.setFont(placeholderLabel.getFont().deriveFont(Font.BOLD, 16f));
-        
+        // Chart type selector
         JPanel controlPanel = new JPanel();
         String[] chartTypes = {
-            "Goals Comparison", "Assists Comparison", "Points Comparison",
-            "Points Per Game Comparison", "Shot Percentage Comparison"
+            "Goals", "Assists", "Points", "Plus/Minus", 
+            "Points Per Game", "Shot Percentage", "Games Played"
         };
+        
         JComboBox<String> chartSelector = new JComboBox<>(chartTypes);
+        chartSelector.setSelectedIndex(2); // Default to Points
+        
         controlPanel.add(new JLabel("Chart Type:"));
         controlPanel.add(chartSelector);
         
-        contentPanel.add(controlPanel, BorderLayout.NORTH);
-        contentPanel.add(placeholderLabel, BorderLayout.CENTER);
-        
-        // For demonstration, add a ChartPanel as a placeholder
+        // Create chart panel and set initial data
         ChartPanel chart = new ChartPanel();
+        chart.setPlayers(players, ChartPanel.ChartType.POINTS); // Default to points
         chart.setPreferredSize(new Dimension(600, 400));
+        
+        // Handle chart type changes
+        chartSelector.addActionListener(e -> {
+            int selectedIndex = chartSelector.getSelectedIndex();
+            ChartPanel.ChartType type;
+            
+            switch (selectedIndex) {
+                case 0: type = ChartPanel.ChartType.GOALS; break;
+                case 1: type = ChartPanel.ChartType.ASSISTS; break;
+                case 2: type = ChartPanel.ChartType.POINTS; break;
+                case 3: type = ChartPanel.ChartType.PLUS_MINUS; break;
+                case 4: type = ChartPanel.ChartType.POINTS_PER_GAME; break;
+                case 5: type = ChartPanel.ChartType.SHOT_PERCENTAGE; break;
+                case 6: type = ChartPanel.ChartType.GAMES_PLAYED; break;
+                default: type = ChartPanel.ChartType.POINTS;
+            }
+            
+            chart.setChartType(type);
+        });
+        
+        contentPanel.add(controlPanel, BorderLayout.NORTH);
         contentPanel.add(chart, BorderLayout.CENTER);
+        
+        // Add comparison insight panel below the chart
+        JPanel insightPanel = new JPanel();
+        insightPanel.setLayout(new BoxLayout(insightPanel, BoxLayout.Y_AXIS));
+        insightPanel.setBorder(BorderFactory.createTitledBorder("Chart Insights"));
+        
+        if (comparisonResult != null) {
+            // Add insights based on chart type (default to points)
+            JLabel insightLabel = new JLabel("Select a chart type to see insights about the comparison");
+            insightLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            insightPanel.add(insightLabel);
+            
+            // Update insights when chart type changes
+            chartSelector.addActionListener(e -> {
+                insightPanel.removeAll();
+                
+                int selectedIndex = chartSelector.getSelectedIndex();
+                String category;
+                
+                switch (selectedIndex) {
+                    case 0: category = "goals"; break;
+                    case 1: category = "assists"; break;
+                    case 2: category = "points"; break;
+                    case 3: category = "plusMinus"; break;
+                    case 4: category = "pointsPerGame"; break;
+                    case 5: category = "shotPercentage"; break;
+                    case 6: category = "gamesPlayed"; break;
+                    default: category = "points";
+                }
+                
+                // Get the winner for this category if available
+                if (comparisonResult.getCategoryWinners().containsKey(category)) {
+                    Player winner = comparisonResult.getCategoryWinners().get(category).get("winner");
+                    boolean hasTie = comparisonResult.getCategoryWinners().get(category).containsKey("hasTies");
+                    
+                    String formattedCategory = formatCategoryName(category);
+                    String winnerValue = getValueForCategory(winner, category);
+                    
+                    JLabel winnerLabel = new JLabel(formattedCategory + " Leader: " + winner.getFullName() + 
+                                                   " (" + winnerValue + ")" + (hasTie ? " (Tied)" : ""));
+                    winnerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+                    winnerLabel.setFont(winnerLabel.getFont().deriveFont(Font.BOLD));
+                    insightPanel.add(winnerLabel);
+                    
+                    // Add more insights based on category
+                    JLabel analysisLabel = new JLabel(getAnalysisForCategory(category, players, winner));
+                    analysisLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+                    insightPanel.add(Box.createVerticalStrut(10));
+                    insightPanel.add(analysisLabel);
+                }
+                
+                insightPanel.revalidate();
+                insightPanel.repaint();
+            });
+        }
+        
+        // Add a height constraint to the insight panel
+        insightPanel.setPreferredSize(new Dimension(600, 100));
+        contentPanel.add(insightPanel, BorderLayout.SOUTH);
         
         chartsPanel.add(contentPanel, BorderLayout.CENTER);
         
         revalidate();
         repaint();
+    }
+    
+    /**
+     * Gets an analysis string for a specific statistical category.
+     * 
+     * @param category the category to analyze
+     * @param players the list of players
+     * @param winner the winning player for this category
+     * @return an analysis string
+     */
+    private String getAnalysisForCategory(String category, List<Player> players, Player winner) {
+        if (players.size() < 2) {
+            return "Add more players to see a detailed analysis.";
+        }
+        
+        switch (category) {
+            case "goals":
+                int maxGoals = winner.getSeasonStats().getGoals();
+                int minGoals = Integer.MAX_VALUE;
+                for (Player p : players) {
+                    if (p.getSeasonStats().getGoals() < minGoals) {
+                        minGoals = p.getSeasonStats().getGoals();
+                    }
+                }
+                return String.format("Range: %d goals. %s scored %.1f%% more goals than the average.",
+                        maxGoals - minGoals, winner.getFullName(), 
+                        calculatePercentAboveAverage(players, winner, p -> p.getSeasonStats().getGoals()));
+                
+            case "assists":
+                return String.format("%s has created the most scoring opportunities for teammates.",
+                        winner.getFullName());
+                
+            case "points":
+                return String.format("%s has been the most productive offensively this season.",
+                        winner.getFullName());
+                
+            case "plusMinus":
+                return String.format("%s has the best net impact while on the ice.",
+                        winner.getFullName());
+                
+            case "pointsPerGame":
+                return String.format("%s averages the highest scoring rate per game played.",
+                        winner.getFullName());
+                
+            case "shotPercentage":
+                return String.format("%s is the most efficient shooter, converting %.1f%% of shots to goals.",
+                        winner.getFullName(), winner.getSeasonStats().getShotPercentage());
+                
+            case "gamesPlayed":
+                return String.format("%s has played the most games this season, showing durability.",
+                        winner.getFullName());
+                
+            default:
+                return "Select a different statistic to see insights.";
+        }
+    }
+    
+    /**
+     * Calculates how much a player's stat is above the average as a percentage.
+     * 
+     * @param players the list of players
+     * @param winner the player to compare
+     * @param statExtractor function to extract the relevant stat
+     * @return percentage above average
+     */
+    private double calculatePercentAboveAverage(List<Player> players, Player winner, 
+            ToIntFunction<Player> statExtractor) {
+        
+        int sum = 0;
+        int winnerStat = statExtractor.applyAsInt(winner);
+        
+        for (Player p : players) {
+            sum += statExtractor.applyAsInt(p);
+        }
+        
+        double average = (double) sum / players.size();
+        return ((winnerStat - average) / average) * 100.0;
     }
     
     /**
@@ -459,8 +614,38 @@ public class ComparisonPanel extends JPanel {
                 return "Best Points Per Game";
             case "shotPercentage":
                 return "Best Shot Percentage";
+            case "gamesPlayed":
+                return "Most Games Played";
             default:
                 return category;
+        }
+    }
+    
+    /**
+     * Gets the value for a category from a player.
+     */
+    private String getValueForCategory(Player player, String category) {
+        if (player.getSeasonStats() == null) {
+            return "N/A";
+        }
+        
+        switch (category) {
+            case "goals": 
+                return String.valueOf(player.getSeasonStats().getGoals());
+            case "assists": 
+                return String.valueOf(player.getSeasonStats().getAssists());
+            case "points": 
+                return String.valueOf(player.getSeasonStats().getPoints());
+            case "plusMinus": 
+                return String.valueOf(player.getSeasonStats().getPlusMinus());
+            case "pointsPerGame": 
+                return String.format("%.2f", player.getSeasonStats().getPointsPerGame());
+            case "shotPercentage": 
+                return String.format("%.1f%%", player.getSeasonStats().getShotPercentage());
+            case "gamesPlayed": 
+                return String.valueOf(player.getSeasonStats().getGamesPlayed());
+            default: 
+                return "N/A";
         }
     }
     

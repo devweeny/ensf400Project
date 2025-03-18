@@ -1,9 +1,13 @@
 package com.nhlstats.ui;
 
+import com.nhlstats.model.Player;
+import com.nhlstats.model.PlayerStats;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -11,12 +15,18 @@ import java.util.Map;
  */
 public class ChartPanel extends JPanel {
     
+    public enum ChartType {
+        GOALS, ASSISTS, POINTS, PLUS_MINUS, POINTS_PER_GAME, SHOT_PERCENTAGE, GAMES_PLAYED
+    }
+    
     private Map<String, Integer> data;
     private Color[] barColors;
     private String title;
     private String xAxisLabel;
     private String yAxisLabel;
     private int maxValue;
+    private List<Player> players;
+    private ChartType currentChartType;
     
     /**
      * Creates a new chart panel with default settings.
@@ -33,16 +43,108 @@ public class ChartPanel extends JPanel {
         this.title = "Sample Bar Chart";
         this.xAxisLabel = "Players";
         this.yAxisLabel = "Points";
-        
-        // Sample data
-        data.put("Player 1", 87);
-        data.put("Player 2", 42);
-        data.put("Player 3", 65);
-        data.put("Player 4", 52);
-        
-        updateMaxValue();
+        this.currentChartType = ChartType.POINTS;
         
         setBackground(Color.WHITE);
+    }
+    
+    /**
+     * Sets the list of players to compare and updates the chart.
+     * 
+     * @param players the list of players to compare
+     * @param chartType the type of statistic to chart
+     */
+    public void setPlayers(List<Player> players, ChartType chartType) {
+        this.players = players;
+        this.currentChartType = chartType;
+        
+        // Generate chart data from players
+        updateChartFromPlayers();
+    }
+    
+    /**
+     * Updates the chart display based on the current players and chart type.
+     */
+    public void updateChartFromPlayers() {
+        if (players == null || players.isEmpty()) {
+            return;
+        }
+        
+        // Set appropriate chart title and axis labels based on chart type
+        switch (currentChartType) {
+            case GOALS:
+                title = "Goals Comparison";
+                yAxisLabel = "Goals";
+                break;
+            case ASSISTS:
+                title = "Assists Comparison";
+                yAxisLabel = "Assists";
+                break;
+            case POINTS:
+                title = "Points Comparison";
+                yAxisLabel = "Points";
+                break;
+            case PLUS_MINUS:
+                title = "Plus/Minus Comparison";
+                yAxisLabel = "Plus/Minus";
+                break;
+            case POINTS_PER_GAME:
+                title = "Points Per Game Comparison";
+                yAxisLabel = "PPG";
+                break;
+            case SHOT_PERCENTAGE:
+                title = "Shot Percentage Comparison";
+                yAxisLabel = "Shot %";
+                break;
+            case GAMES_PLAYED:
+                title = "Games Played Comparison";
+                yAxisLabel = "Games";
+                break;
+        }
+        
+        // Create data map from player stats
+        Map<String, Integer> chartData = new HashMap<>();
+        
+        for (Player player : players) {
+            if (player == null || player.getSeasonStats() == null) {
+                continue;
+            }
+            
+            PlayerStats stats = player.getSeasonStats();
+            String playerName = player.getFullName();
+            int value = 0;
+            
+            switch (currentChartType) {
+                case GOALS:
+                    value = stats.getGoals();
+                    break;
+                case ASSISTS:
+                    value = stats.getAssists();
+                    break;
+                case POINTS:
+                    value = stats.getPoints();
+                    break;
+                case PLUS_MINUS:
+                    value = stats.getPlusMinus();
+                    break;
+                case POINTS_PER_GAME:
+                    // Convert to an integer for visualization (multiply by 100 for 2 decimal places)
+                    value = (int) (stats.getPointsPerGame() * 100);
+                    break;
+                case SHOT_PERCENTAGE:
+                    // Convert to an integer for visualization (multiply by 100 to get percentage)
+                    value = (int) stats.getShotPercentage();
+                    break;
+                case GAMES_PLAYED:
+                    value = stats.getGamesPlayed();
+                    break;
+            }
+            
+            chartData.put(playerName, value);
+        }
+        
+        // Update the chart data
+        setData(chartData);
     }
     
     /**
@@ -54,6 +156,16 @@ public class ChartPanel extends JPanel {
         this.data = data;
         updateMaxValue();
         repaint();
+    }
+    
+    /**
+     * Changes the current chart type and updates the display.
+     * 
+     * @param chartType the new chart type to display
+     */
+    public void setChartType(ChartType chartType) {
+        this.currentChartType = chartType;
+        updateChartFromPlayers();
     }
     
     /**
@@ -144,7 +256,19 @@ public class ChartPanel extends JPanel {
         for (int i = 0; i <= numYDivisions; i++) {
             int y = getHeight() - padding - ((yAxisHeight * i) / numYDivisions);
             int tickValue = (maxValue * i) / numYDivisions;
-            String yLabel = Integer.toString(tickValue);
+            
+            // Format the tick value based on chart type
+            String yLabel;
+            if (currentChartType == ChartType.POINTS_PER_GAME && maxValue > 0) {
+                // Show as decimal for points per game
+                double decimalValue = tickValue / 100.0;
+                yLabel = String.format("%.2f", decimalValue);
+            } else if (currentChartType == ChartType.SHOT_PERCENTAGE) {
+                // Show as percentage
+                yLabel = tickValue + "%";
+            } else {
+                yLabel = Integer.toString(tickValue);
+            }
             
             FontMetrics metrics = g2d.getFontMetrics();
             int labelWidth = metrics.stringWidth(yLabel);
@@ -177,13 +301,21 @@ public class ChartPanel extends JPanel {
             g2d.drawRect(x, y, barWidth - 20, barHeight);
             
             // Draw value at top of bar
-            String valueStr = String.valueOf(value);
+            String valueStr;
+            if (currentChartType == ChartType.POINTS_PER_GAME) {
+                valueStr = String.format("%.2f", value / 100.0);
+            } else if (currentChartType == ChartType.SHOT_PERCENTAGE) {
+                valueStr = value + "%";
+            } else {
+                valueStr = String.valueOf(value);
+            }
+            
             FontMetrics metrics = g2d.getFontMetrics();
             int labelWidth = metrics.stringWidth(valueStr);
             g2d.setColor(Color.BLACK);
             g2d.drawString(valueStr, x + (barWidth - 20) / 2 - labelWidth / 2, y - 5);
             
-            // Draw x-axis label
+            // Draw x-axis label (player name)
             g2d.setColor(Color.BLACK);
             g2d.setFont(new Font("Arial", Font.PLAIN, 10));
             metrics = g2d.getFontMetrics();
