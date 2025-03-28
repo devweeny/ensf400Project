@@ -3,10 +3,10 @@ version: '3.8'
 services:
   app:
     build: 
-      context: .
-      dockerfile: Dockerfile
+      context: ./.devcontainer
+      dockerfile: Dockerfile.dev
     volumes:
-      - ..:/workspace:cached
+      - .:/workspace:cached
     command: sleep infinity
     environment:
       - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
