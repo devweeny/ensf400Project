@@ -2,34 +2,6 @@ version: '3.8'
 
 services:
   app:
-    build: 
-      context: ./.devcontainer
-      dockerfile: Dockerfile.dev
-    volumes:
-      - .:/workspace:cached
-    command: sleep infinity
-    environment:
-      - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-
-  sonarqube:
-    image: sonarqube:lts
-    ports:
-      - "9000:9000"
-    environment:
-      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
-
-  jenkins:
-    image: jenkins/jenkins:lts
-    privileged: true
-    user: root
+    build: .
     ports:
       - "8080:8080"
-      - "50000:50000"
-    volumes:
-      - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
-
-volumes:
-  jenkins_home:
